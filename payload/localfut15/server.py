@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from asyncio.windows_events import NULL
 import datetime as _dt
 import hashlib
 import json
@@ -33,7 +34,7 @@ else:
     _crypto_import_error = None
 
 APP_NAME = "FIFA15 Local FUT"
-VERSION = "0.2.43-current-season-reset-fix"
+VERSION = "0.2.39-public-test1"
 ROOT = Path(__file__).resolve().parent
 # Keep runtime state outside the FIFA installation directory. FIFA is commonly
 # installed under Program Files, where a normal user cannot create SQLite/log
@@ -1391,6 +1392,11 @@ class State:
                     "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
                     ("credits", json.dumps(new_total)),
                 )
+                self.conn.execute(
+                    "INSERT INTO unopened_packs(id,pack_id,data) VALUES(?,?,?) ",
+                    (1, 1,""),
+                )
+
             self.conn.commit()
 
         log.warning(
@@ -2829,73 +2835,6 @@ _migrate_legacy_localappdata_database()
 STATE = State(DB_PATH)
 
 
-def _sanitize_offline_season_state_startup() -> None:
-    """Prevent FIFA from receiving an impossible half-active fresh season.
-
-    A prior run can persist offline_season_active=True without FIFA ever
-    authoring either opaque SeasonData or progressData. That state is exactly
-    what the Seasons client rejects while opening the mode. Clear only the
-    current-season active flag in that case; preserve club, items, coins and
-    all-time record.
-    """
-    try:
-        active = bool(STATE.get("offline_season_active", False))
-        data = str(STATE.get("offline_season_wire_data", "") or "")
-        progress = str(STATE.get("offline_season_wire_progress_data", "") or "")
-        if active and not data and not progress:
-            STATE.set("offline_season_active", False)
-            log.warning("SEASONS STARTUP SANITIZER cleared stale active=True with no SeasonData/progressData")
-    except Exception:
-        log.exception("SEASONS STARTUP SANITIZER failed")
-
-
-_sanitize_offline_season_state_startup()
-
-
-def _repair_zero_game_active_season_once() -> None:
-    """One-time repair for legacy current-season state that advertises active=True
-    while still being a zero-game Division 10 bootstrap. Preserve the FUT club,
-    coins, items, squad and all-time record; clear only the current season wire state.
-    """
-    try:
-        if bool(STATE.get("season_zero_game_repair_done", False)):
-            return
-        active = bool(STATE.get("offline_season_active", False))
-        st = STATE.offline_season_state()
-        zero_game = (
-            int(st.get("round", 0) or 0) <= 1
-            and int(st.get("points", 0) or 0) == 0
-            and int(st.get("wins", 0) or 0) == 0
-            and int(st.get("draws", 0) or 0) == 0
-            and int(st.get("losses", 0) or 0) == 0
-            and int(st.get("goals_for", 0) or 0) == 0
-            and int(st.get("goals_against", 0) or 0) == 0
-        )
-        if active and zero_game:
-            for key in (
-                "offline_season_points", "offline_season_round",
-                "offline_season_wins", "offline_season_draws", "offline_season_losses",
-                "offline_season_goals_for", "offline_season_goals_against",
-            ):
-                STATE.set(key, 0)
-            STATE.set("offline_season_active", False)
-            STATE.set("offline_season_wire_round", 1)
-            STATE.set("offline_season_wire_data", "")
-            STATE.set("offline_season_wire_data_version", 1)
-            STATE.set("offline_season_wire_progress_data", "")
-            STATE.set("offline_season_wire_progress_version", 1)
-            STATE.set("awaiting_post_match_season_save", False)
-            STATE.set("offline_match_pending", False)
-            STATE.set("last_match_end_response", {})
-            log.warning("SEASONS v0.2.43 one-time repair: cleared zero-game active current-season wire state; club/items/coins/all-time record preserved")
-        STATE.set("season_zero_game_repair_done", True)
-    except Exception:
-        log.exception("SEASONS v0.2.43 zero-game repair failed")
-
-
-_repair_zero_game_active_season_once()
-
-
 def _club_name() -> str:
     return str(STATE.get("club_name", CFG.get("club_name", "Local FC")) or "Local FC")
 
@@ -4159,7 +4098,7 @@ def _season_trophy_big_response(request_path: str) -> bytes:
     `item.big` request and the full trophy payload when its explicit name is asked.
     """
     low_path = str(request_path or "").lower()
-    candidate = SEASON_TROPHY_ITEM_BIG if low_path.endswith("/item.big") else SEASON_TROPHY_FULL_BIG
+    candidate = SEASON_TROPHY_ITEM_BIG
     try:
         blob = candidate.read_bytes()
         if blob:
@@ -4272,14 +4211,6 @@ def _offline_season_user_payload(full: bool = False) -> dict[str, Any]:
     all_defs = _offline_season_definitions()
     internal = next((x for x in all_defs if int(x["divisionNumber"]) == division_number), all_defs[-1])
     active = bool(STATE.get("offline_season_active", False))
-    # Recover from a stale half-active state left by an interrupted match.
-    # FIFA 15 can otherwise receive active=True with no opaque SeasonData or
-    # progressData, then terminate while opening Seasons.
-    saved_data = str(STATE.get("offline_season_wire_data", "") or "")
-    saved_progress = str(STATE.get("offline_season_wire_progress_data", "") or "")
-    if active and not saved_data and not saved_progress:
-        active = False
-        STATE.set("offline_season_active", False)
     # Fresh bootstrap and resumed-season parsing are annoyingly different in
     # FIFA 15 PC. The exact v0.2.13 fresh contract that first opened Seasons
     # used the inverse ordinal (Division 10 -> 1). Once FIFA has authored its
@@ -4287,6 +4218,27 @@ def _offline_season_user_payload(full: bool = False) -> dict[str, Any]:
     # for stable resume. Split those states instead of forcing one value through
     # both parsers.
     saved_data = str(STATE.get("offline_season_wire_data", "") or "")
+
+    # Defensive FIFA 15 bootstrap repair:
+    # A persisted active=True with no client-authored SeasonData/progress and a
+    # 0-0-0 record is not a real resumable season. FIFA 15 reports bootstrap
+    # round=1 even before any match has been played, so round alone cannot be
+    # used to detect this state.
+    progress_data = str(STATE.get("offline_season_wire_progress_data", "") or "")
+    wins = int(st.get("wins", 0) or 0)
+    draws = int(st.get("draws", 0) or 0)
+    losses = int(st.get("losses", 0) or 0)
+    if active and not saved_data and not progress_data and wins == 0 and draws == 0 and losses == 0:
+        log.warning(
+            "SEASONS BOOTSTRAP REPAIR active-without-data/progress -> inactive "
+            "division=%s round=%s WDL=%s-%s-%s",
+            division_number,
+            int(st.get("round", 0) or 0),
+            wins, draws, losses,
+        )
+        STATE.set("offline_season_active", False)
+        active = False
+
     active_wire = bool(active or saved_data)
     wire_division = int(division_number if active_wire else (11 - division_number))
     user = {
@@ -5800,17 +5752,8 @@ def route_fut(method: str, raw_path: str, headers: dict[str, str], body: bytes) 
         season_type = str(query.get("type", ["offline"])[0] or "offline").lower()
         if season_type == "offline":
             if method in ("PUT", "POST") and isinstance(payload, dict):
-                # Bootstrap/probe calls can arrive without FIFA-authored opaque
-                # SeasonData. Never persist active=True for those requests.
-                has_season_blob = bool(str(payload.get("data", "") or ""))
-                has_progress_blob = bool(str(payload.get("progressData", "") or ""))
-                if has_season_blob or has_progress_blob:
-                    STATE.set("offline_season_active", True)
-                    STATE.update_offline_season(payload)
-                    log.info("SEASONS SAVE accepted FIFA-authored SeasonData/progressData")
-                else:
-                    STATE.set("offline_season_active", False)
-                    log.info("SEASONS SAVE ignored bootstrap/probe with no SeasonData/progressData")
+                STATE.set("offline_season_active", True)
+                STATE.update_offline_season(payload)
             user = _offline_season_user_payload()
             return 200, {}, json_bytes(user)
         return 200, {}, json_bytes({})
@@ -5852,25 +5795,33 @@ def route_fut(method: str, raw_path: str, headers: dict[str, str], body: bytes) 
         season_type = str(query.get("type", ["offline"])[0] or "offline").lower()
         if method == "GET" and season_type == "offline":
             response = _offline_season_user_payload()
+            # FIFA 15 Divisions crash fix (offline season/user descriptor only).
+            # An offline-season descriptor that advertises an underway season
+            # (active / seasonState="active") while carrying neither `data` nor
+            # `progressData` is the exact state the PC client cannot resume: it
+            # walks the Division trophy-render path and dies on the trophy asset
+            # served immediately after this response. That inconsistent payload
+            # is produced whenever a stale opaque save keeps offline_season_active
+            # True while the semantic round is still 0, so the enriched
+            # data/progress block in _offline_season_user_payload is never
+            # attached. Re-emit the SAME self-consistent *fresh* descriptor the
+            # server already returns for a genuinely new season (the path that
+            # loads FUT successfully) instead of the active-but-dataless payload.
+            # A real Round 2+ resume always carries data/progressData and is left
+            # untouched by this guard.
+            if not response.get("data") and not response.get("progressData") and (
+                response.get("active") or str(response.get("seasonState", "")).lower() == "active"
+            ):
+                response["active"] = False
+                response["seasonState"] = "inactive"
+                response["divisionId"] = int(11 - int(response.get("offlineDivision", 10) or 10))
             log.warning("SEASONS CURRENT USER FIFA15-RAW active=%s userDivisionOffline=%s wireDivisionId=%s seasonId=%s round=%s data=%s progress=%s payloadActive=%s WDL=%s-%s-%s", bool(STATE.get("offline_season_active", False)), int(STATE.offline_season_state().get("division", 10) or 10), response.get("divisionId"), response.get("seasonId"), response.get("round"), bool(response.get("data")), bool(response.get("progressData")), response.get("active"), response.get("seasonGamesWon", 0), response.get("seasonGamesDraw", 0), response.get("seasonGamesLost", 0))
             return 200, {"Cache-Control": "no-store"}, json_bytes(response)
         if method in ("PUT", "POST"):
             if isinstance(payload, dict):
-                # FIFA can send a bootstrap/probe POST here before it has authored
-                # the opaque SeasonData/progressData required to resume a season.
-                # Never turn the current season active solely because of that probe.
-                has_season_blob = bool(str(payload.get("data", "") or ""))
-                has_progress_blob = bool(str(payload.get("progressData", payload.get("progressdata", "")) or ""))
-                if has_season_blob or has_progress_blob:
-                    STATE.set("offline_season_active", True)
-                    _save_season_progress_wire(payload)
-                    STATE.update_offline_season(payload)
-                    log.info("SEASONS USER SAVE accepted FIFA-authored SeasonData/progressData")
-                else:
-                    existing_data = str(STATE.get("offline_season_wire_data", "") or "")
-                    existing_progress = str(STATE.get("offline_season_wire_progress_data", "") or "")
-                    STATE.set("offline_season_active", bool(existing_data or existing_progress))
-                    log.info("SEASONS USER SAVE ignored bootstrap/probe with no SeasonData/progressData")
+                STATE.set("offline_season_active", True)
+                _save_season_progress_wire(payload)
+                STATE.update_offline_season(payload)
             return 200, {}, json_bytes(_offline_season_user_payload())
 
     # Native SeasonUpdate/SeasonLoadData family. The URL template in CardsDLL
@@ -5881,6 +5832,7 @@ def route_fut(method: str, raw_path: str, headers: dict[str, str], body: bytes) 
         season_id = int(season_progress.group(1))
         division_number = int(season_progress.group(2))
         if method in ("PUT", "POST"):
+            STATE.set("offline_season_active", True)
             STATE.set("offline_season_division", max(1, min(10, int(division_number))))
             if isinstance(payload, dict):
                 # This endpoint is FIFA saving its opaque SeasonData blob. The
@@ -5888,16 +5840,7 @@ def route_fut(method: str, raw_path: str, headers: dict[str, str], body: bytes) 
                 # FIFA writes round=1 while merely opening/starting Division 10.
                 # Preserve the client blob verbatim and advance semantic round/
                 # W-D-L only from /match/end.
-                has_season_blob = bool(str(payload.get("data", "") or ""))
-                has_progress_blob = bool(str(payload.get("progressData", payload.get("progressdata", "")) or ""))
-                if has_season_blob or has_progress_blob:
-                    STATE.set("offline_season_active", True)
-                    _save_season_progress_wire(payload)
-                else:
-                    existing_data = str(STATE.get("offline_season_wire_data", "") or "")
-                    existing_progress = str(STATE.get("offline_season_wire_progress_data", "") or "")
-                    STATE.set("offline_season_active", bool(existing_data or existing_progress))
-                    log.info("SEASONS DIVISION SAVE ignored bootstrap/probe with no SeasonData/progressData")
+                _save_season_progress_wire(payload)
             response = _season_progress_wire_payload(season_id, division_number)
             log.warning("SEASONS SAVE season=%s division=%s body=%s response=%s", season_id, division_number, payload, response)
             return 200, {"Cache-Control": "no-store"}, json_bytes(response)
@@ -7121,7 +7064,7 @@ class BlazeOrHttpHandler(socketserver.BaseRequestHandler):
     def handle(self) -> None:
         sock: socket.socket = self.request
         peer = self.client_address
-        sock.settimeout(120)
+        sock.settimeout(None)
         try:
             first = sock.recv(65536)
         except Exception:
@@ -7510,7 +7453,14 @@ def _lsx_xml_response(request_xml: str) -> str:
 
 def _recv_nul_frame(sock: socket.socket, buffer: bytearray) -> bytes | None:
     while b"\x00" not in buffer:
-        chunk = sock.recv(65536)
+        try:
+            chunk = sock.recv(65536)
+        except socket.timeout:
+            # An idle LSX socket is still a healthy connection. FIFA 15 can leave
+            # OriginSDK quiet for minutes during gameplay; keep waiting rather than
+            # tearing down the local Origin session.
+            log.info("Origin LSX idle timeout; keeping connection alive")
+            continue
         if not chunk:
             return None
         buffer.extend(chunk)
@@ -7532,7 +7482,7 @@ def _send_encrypted_frame(sock: socket.socket, crypto: OriginCrypto, xml: str) -
 class LSXHandler(socketserver.BaseRequestHandler):
     def handle(self) -> None:
         sock: socket.socket = self.request
-        sock.settimeout(30)
+        sock.settimeout(None)
         peer = self.client_address
         log.info("Origin LSX client connected from %s:%s", *peer)
         buffer = bytearray()
@@ -7629,11 +7579,7 @@ class LSXHandler(socketserver.BaseRequestHandler):
                 log.exception("Unable to send LSX Login event to %s:%s", *peer)
 
             # 3) Subsequent LSX messages are ASCII hex of AES-128-ECB/PKCS7 XML.
-            # FIFA 15 can remain in an offline match for several minutes with
-            # no LSX request. A 120-second idle timeout was enough to terminate
-            # a healthy match and produce FIFA's "Origin Client being terminated"
-            # message. Keep the local LSX session alive for 15 minutes instead.
-            sock.settimeout(900)
+            sock.settimeout(None)
             while True:
                 frame = _recv_nul_frame(sock, buffer)
                 if frame is None:
