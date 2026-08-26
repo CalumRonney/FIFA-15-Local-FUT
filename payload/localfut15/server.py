@@ -833,7 +833,14 @@ class State:
             self.set("next_item_id", v)
             return v
 
-    def player_discard_value(self, resource_id: int) -> int:
+    'Todo: quick sell value'
+    def player_discard_value(self, resource_id: int) -> int64:
+
+        """Updated quick-sell values, aims to widen gap between different rated players
+            quick-sell value is primarly based on rating
+        
+        """
+        
         """Local FUT quick-sell values.
 
         User-selected economy:
@@ -842,6 +849,14 @@ class State:
           special              = 10,000-17,000 based on card rarity/type
         """
         meta = player_meta(resource_id)
+
+        rating = int(meta.get("rating", 75) or 75)
+
+        ratingNormal = (rating - 40) / 59
+
+        return pow(ratingNormal,2) * 1000000 * 0.6
+
+    '''
         try:
             rareflag = int(meta.get("rareflag", 0) or 0)
         except Exception:
@@ -852,7 +867,7 @@ class State:
         if not is_special:
             return 700 if rareflag == 1 else 360
 
-        rating = int(meta.get("rating", 75) or 75)
+        
 
         # FIFA 15 special shells. IF/TOTW quick-sell now scales by OVR so an
         # ordinary low-rated IF sits around 10k while strong IFs reach ~14k.
@@ -875,6 +890,7 @@ class State:
             14: 13500,
         }
         return int(special_values.get(rareflag, 12000))
+    '''
 
     def make_player_item(self, resource_id: int, pile: str = "club") -> dict[str, Any]:
         item_id = self.next_item_id()
