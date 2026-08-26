@@ -4044,7 +4044,7 @@ def _transfer_pile_payload() -> dict[str, Any]:
         "itemData": [x.get("itemData") for x in info if isinstance(x.get("itemData"), dict)],
     }
 
-
+'''todo season rewards and definitions'''
 def _offline_season_definitions() -> list[dict[str, Any]]:
     """FIFA 15 offline division table using the client-proven FIFA 14 PC ordinal contract.
 
@@ -4069,13 +4069,13 @@ def _offline_season_definitions() -> list[dict[str, Any]]:
         (6, 10, 16, 3800),
         (7, 10, 14, 3300),
         (8, 10, 13, 2900),
-        (9, 10, 11, 2100),
-        (10, 10, 9, 1900),
+        (9, 2, 11, 1000000),
+        (10, 1, 0, 50000),
     ]
     defs: list[dict[str, Any]] = []
     for division, matches, promote_pts, championship_coins in ladder:
         difficulty = CFG.get("difficulty",1)
-        title_pts = 12 if division == 10 else min(30, promote_pts + 3)
+        title_pts = promote_pts + 3
         maintenance_pts = 0 if division == 10 else max(0, promote_pts - 5)
         defs.append({
             "divisionNumber": division,
@@ -4143,7 +4143,7 @@ def _season_trophy_item_response(resource_id: int) -> dict[str, Any]:
             "image": basename,
         }]
     }
-
+'''todo season team def'''
 def _season_match_records(internal: dict[str, Any]) -> list[dict[str, Any]]:
     """Ten local AI fixtures using member names present in FIFA 15 CardsDLL."""
     division = int(internal["divisionNumber"])
@@ -4159,7 +4159,7 @@ def _season_match_records(internal: dict[str, Any]) -> list[dict[str, Any]]:
             "roundId": i,
             "coins": 300 + i * 25 + (10 - division) * 50,
         }
-        for i in range(10)
+        for i in range(int(internal["numMatches"]))
     ]
 
 
@@ -4179,7 +4179,7 @@ def _season_prize(level: str, threshold: int, coins: int = 0) -> dict[str, Any]:
         "awardMappings": [{"awards": awards}],
     }
 
-
+'''todo further season coins setup'''
 def _season_list_wire_record(internal: dict[str, Any]) -> dict[str, Any]:
     """Exact FIFA 15 PC SeasonList record, limited to members its parser reads."""
     title = int(internal["pointsForTitle"])
@@ -4189,8 +4189,9 @@ def _season_list_wire_record(internal: dict[str, Any]) -> dict[str, Any]:
     # Small but non-zero Division 10 rewards so the native Season Rewards
     # binding has actual award records to consume.
     championship_coins = int(internal.get("reward", 1900) or 1900)
-    promotion_coins = 1500 if division == 10 else max(500, championship_coins - 400)
-    maintenance_coins = 300 if division == 10 else max(300, championship_coins // 5)
+    promotion_coins = championship_coins * 0.8
+    maintenance_coins = championship_coins * 0.6
+    relegation_coins = championship_coins * 0.2
     return {
         "id": int(internal["id"]),
         # Keep the catalogue identity stable. Reversing these ten values in
@@ -4202,7 +4203,7 @@ def _season_list_wire_record(internal: dict[str, Any]) -> dict[str, Any]:
         "matchLengthMin": 6,
         "matches": _season_match_records(internal),
         "prizeSet": [
-            _season_prize("RELEGATION", 0, 0),
+            _season_prize("RELEGATION", 0, relegation_coins),
             _season_prize("MAINTENANCE", maintenance, maintenance_coins),
             _season_prize("PROMOTION", promotion, promotion_coins),
             _season_prize("CHAMPIONSHIP", title, championship_coins),
