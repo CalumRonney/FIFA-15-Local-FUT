@@ -4426,8 +4426,8 @@ def _save_season_progress_wire(payload: dict[str, Any]) -> bool:
                 pass
     return True
 
-
-def _offline_match_reward(doc: dict[str, Any], end_reason: str) -> dict[str, int | float]:
+'''Todo match reward calc'''
+def _offline_match_reward(doc: dict[str, Any], end_reason: str, division: int) -> dict[str, int | float]:
     """Small retail-style FUT match award breakdown.
 
     This mirrors the proven FIFA 14 PC local implementation closely enough for
@@ -4466,10 +4466,10 @@ def _offline_match_reward(doc: dict[str, Any], end_reason: str) -> dict[str, int
         - min(against * 20, 80)
         - min(fouls, 20)
         - min((yellows + reds) * 10, 80)
-        - min(offsides, 15)
+        - min(offsides, 15)  
     )
     skill = max(0, int(round(skill_raw))) if completed else 0
-    total = max(0, completion + skill)
+    total = max(0, completion + skill * (11 - division))
     return {
         "minutesPlayed": minutes,
         "secondsPlayed": minutes * 60,
@@ -4806,7 +4806,7 @@ def route_fut(method: str, raw_path: str, headers: dict[str, str], body: bytes) 
             except Exception:
                 pass
 
-        reward = _offline_match_reward(doc, end_reason)
+        reward = _offline_match_reward(doc, end_reason,int(st_before.get("division", 10)))
         seconds_played = int(reward.get("secondsPlayed", 0) or 0)
         if end_reason in {"QUIT", "DNF", "FORFEIT"} and seconds_played <= 0:
             # A zero-second terminal response can be interpreted by the client as
