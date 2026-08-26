@@ -5,7 +5,7 @@
   "club_id": 1,
   "club_name": "Local FC",
   "club_abbr": "LCL",
-  "credits": 0,
+  "credits": 20000,
   "fut_game": "fifa15",
   "game_sku": "FFA15PCC",
   "fut_sku": "FUT15PCC",
@@ -41,5 +41,6 @@
   "ai_market_results": 0,
   "offline_seasons_enabled": true,
   "ai_market_copies_per_card": 10,
-  "starter_cosmetics_only": true
+  "starter_cosmetics_only": true,
+  "difficulty": 3
 }
