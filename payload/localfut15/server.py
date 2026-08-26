@@ -2102,9 +2102,13 @@ class State:
             v = int(self.get("next_trade_id", 650000000000)) + 1
             self.set("next_trade_id", v)
             return v
-
+    '''todo: market value price'''
     def market_reference_price(self, resource_id: int) -> int:
         """Deterministic local guide price based on FIFA 15 card quality/rarity."""
+
+        
+        return self.player_discard_value(int(resource_id)) / 0.6
+
         meta = player_meta(int(resource_id))
         rating = int(meta.get("rating", 60) or 60)
         rareflag = int(meta.get("rareflag", 0) or 0)
