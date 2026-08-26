@@ -89,6 +89,7 @@ def load_config() -> dict[str, Any]:
         "ai_market_copies_per_card": 10,
         "offline_seasons_enabled": True,
         "starter_cosmetics_only": False,
+        "difficulty": 3,
     }
     if CONFIG_PATH.exists():
         try:
@@ -4053,7 +4054,7 @@ def _offline_season_definitions() -> list[dict[str, Any]]:
     ]
     defs: list[dict[str, Any]] = []
     for division, matches, promote_pts, championship_coins in ladder:
-        difficulty = max(1, min(5, 1 + (10 - division) // 2))
+        difficulty = CFG.get("difficulty",1)
         title_pts = 12 if division == 10 else min(30, promote_pts + 3)
         maintenance_pts = 0 if division == 10 else max(0, promote_pts - 5)
         defs.append({
