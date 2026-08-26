@@ -2497,6 +2497,12 @@ class State:
 
     def update_offline_season(self, payload: dict[str, Any]) -> dict[str, int]:
         state = self.offline_season_state()
+        seasonDef = _offline_season_definitions()
+
+        current = next(
+            (x for x in seasonDef if int(x.get("divisionNumber", 10)) == int(state.get("division", 10))),
+            seasonDef[-1],
+        )
         # Accept native-ish progress payloads without requiring a single schema.
         for src, key in (("round", "round"), ("points", "points"), ("wins", "wins"), ("draws", "draws"),
                          ("losses", "losses"), ("goalsFor", "goalsFor"), ("goalsAgainst", "goalsAgainst")):
@@ -4239,14 +4245,14 @@ def _offline_season_user_payload(full: bool = False) -> dict[str, Any]:
     # own SeasonData and the season is active, v0.2.22 proved raw 10 is required
     # for stable resume. Split those states instead of forcing one value through
     # both parsers.
-    saved_data = str(STATE.get("offline_season_wire_data", "") or "")
+    saved_data = str(STATE.get("offline_season_wire_data", ""))
 
     # Defensive FIFA 15 bootstrap repair:
     # A persisted active=True with no client-authored SeasonData/progress and a
     # 0-0-0 record is not a real resumable season. FIFA 15 reports bootstrap
     # round=1 even before any match has been played, so round alone cannot be
     # used to detect this state.
-    progress_data = str(STATE.get("offline_season_wire_progress_data", "") or "")
+    progress_data = str(STATE.get("offline_season_wire_progress_data", ""))
     wins = int(st.get("wins", 0) or 0)
     draws = int(st.get("draws", 0) or 0)
     losses = int(st.get("losses", 0) or 0)
@@ -4258,7 +4264,7 @@ def _offline_season_user_payload(full: bool = False) -> dict[str, Any]:
             int(st.get("round", 0) or 0),
             wins, draws, losses,
         )
-        STATE.set("offline_season_active", False)
+        #STATE.set("offline_season_active", False)
         active = False
 
     active_wire = bool(active or saved_data)
@@ -4815,6 +4821,8 @@ def route_fut(method: str, raw_path: str, headers: dict[str, str], body: bytes) 
 
         settled = st_before
         reward_coins = 0
+        season_coins = 0
+        seasonComplete = False
         if first_settlement:
             result_key = "win" if end_reason == "WIN" else "draw" if end_reason == "DRAW" else "loss"
             mine = doc.get("myMatchStats") if isinstance(doc.get("myMatchStats"), dict) else {}
@@ -4831,6 +4839,13 @@ def route_fut(method: str, raw_path: str, headers: dict[str, str], body: bytes) 
             STATE.set("offline_season_history_goals_for", int(STATE.get("offline_season_history_goals_for", 0) or 0) + gf)
             STATE.set("offline_season_history_goals_against", int(STATE.get("offline_season_history_goals_against", 0) or 0) + ga)
 
+
+            if settled["round"] >= current.get("numMatches", 10):
+                seasonComplete = True
+            else:
+                STATE.set("offline_season_active", True)
+
+
             # Completed matches receive the award exactly once. Quit/DNF remains
             # zero so the local economy cannot be farmed through forfeits.
             if end_reason in {"WIN", "DRAW", "LOSS"}:
@@ -4838,6 +4853,38 @@ def route_fut(method: str, raw_path: str, headers: dict[str, str], body: bytes) 
                 if reward_coins > 0:
                     STATE.add_credits(reward_coins)
                     STATE.set("offline_season_coins", int(STATE.get("offline_season_coins", 0) or 0) + reward_coins)
+
+            if seasonComplete:
+                if settled.get("Points", 0) >= current.get("pointsForTitle", 23):
+                    season_coins = current.get("reward")
+                elif settled.get("Points", 0) >= current.get("pointsForPromotion", 23):
+                    season_coins = current.get("reward") * 0.8
+                elif settled.get("Points", 0) >= current.get("pointsForMaintenance", 23):
+                    season_coins = current.get("reward") * 0.6
+                else:
+                    season_coins = current.get("reward") * 0.2
+                log.info("Season finish, added credits %s",season_coins)
+                STATE.add_credits(season_coins)
+                STATE.set("offline_season_coins", int(STATE.get("offline_season_coins", 0) or 0) + season_coins)
+
+            new_division = st_before.get("division", 10)
+            if seasonComplete:
+                STATE.set("offline_seasons_completed", int(STATE.get("offline_seasons_completed", 0) or 0) + 1)
+                if settled.get("Points", 0) >= current.get("pointsForTitle", 23):
+                   STATE.set("offline_season_trophies", int(STATE.get("offline_season_trophies", 0) or 0) + 1)
+                   STATE.set("offline_season_promotions", int(STATE.get("offline_season_promotions", 0) or 0) + 1)
+                   new_division = max(1,new_division - 1)
+                   log.info("Season won, new division %s",new_division)
+                elif settled.get("Points", 0) >= current.get("pointsForPromotion", 23):
+                   STATE.set("offline_season_promotions", int(STATE.get("offline_season_promotions", 0) or 0) + 1)
+                   new_division = max(1,new_division - 1)
+                   log.info("Season promotion, new division %s",new_division)
+                elif settled.get("Points", 0) < current.get("pointsForMaintenance", 23):
+                   STATE.set("offline_season_relegations", int(STATE.get("offline_season_relegations", 0) or 0) + 1)
+                   new_division = min(10,new_division + 1)
+                   log.info("Season relegation, new division %s",new_division)
+                settled = STATE.reset_offline_season(int(new_division))
+
 
             # FUT contracts are consumed by players who actually took part in the
             # fixture. Start with the 11 MatchReady starters, then include any bench
@@ -4892,7 +4939,7 @@ def route_fut(method: str, raw_path: str, headers: dict[str, str], body: bytes) 
             # partial arrays.  Keep the old aliases for diagnostics, but make
             # the native fields authoritative so the post-match award screen
             # can actually render the coins that were already credited locally.
-            native_total = int(reward_coins if first_settlement else reward.get("totalCoins", 0) or 0) if completed_normally else 0
+            native_total = int(reward_coins + season_coins if first_settlement else reward.get("totalCoins", 0) or 0) if completed_normally else 0
             native_participation = int(reward.get("completionAward", 0) or 0) if completed_normally else 0
             native_match = max(0, native_total - native_participation) if completed_normally else 0
             response.update({
@@ -4904,7 +4951,7 @@ def route_fut(method: str, raw_path: str, headers: dict[str, str], body: bytes) 
                 "boostCountLeft": 0,
                 "matchCoinMultipliers": [],
                 "matchCoinPartials": [],
-                "seasonCoins": 0,
+                "seasonCoins": season_coins,
                 "tournamentCoins": 0,
                 "teamOfTournamentWinner": False,
 
@@ -4915,7 +4962,7 @@ def route_fut(method: str, raw_path: str, headers: dict[str, str], body: bytes) 
                 "rewardCoins": native_total,
                 "totalCoins": native_total,
                 "dnfModifier": float(reward.get("dnfModifier", 1.0) or 1.0),
-                "seasonId": 10,
+                "seasonId": int(settled.get("division", 10) or 10),
                 "divisionId": int(settled.get("division", 10) or 10),
                 "seasonRound": max(1, int(settled.get("round", 0) or 0) + 1),
                 "seasonPoints": int(settled.get("points", 0) or 0),
@@ -4944,16 +4991,16 @@ def route_fut(method: str, raw_path: str, headers: dict[str, str], body: bytes) 
         if end_reason in {"WIN", "DRAW", "LOSS", "QUIT", "DNF", "FORFEIT"}:
             log.warning(
                 "MATCH REWARD FIFA15-NATIVE allCoins=%s matchCoins=%s participationAward=%s wallet=%s",
-                int(response.get("allCoins", 0) or 0),
-                int(response.get("matchCoins", 0) or 0),
-                int(response.get("participationAward", 0) or 0),
+                int(response.get("allCoins", 0)),
+                int(response.get("matchCoins", 0)),
+                int(response.get("participationAward", 0)),
                 current_credits,
             )
 
         log.warning(
             "SEASONS MATCH END season=10 division=%s round=%s reason=%s body=%s response=%s",
-            int(st_before.get("division", 10) or 10),
-            max(1, int(st_before.get("round", 0) or 0) + 1),
+            int(STATE.get("division", 10)),
+            max(1, int(st_before.get("round", 0)) + 1),
             end_reason,
             doc,
             response,
@@ -5852,10 +5899,10 @@ def route_fut(method: str, raw_path: str, headers: dict[str, str], body: bytes) 
     season_progress = re.match(r"^/ut/game/fifa15/season/(\d+)/division/(\d+)/user$", low)
     if bool(CFG.get("offline_seasons_enabled", True)) and season_progress:
         season_id = int(season_progress.group(1))
-        division_number = int(season_progress.group(2))
+        division_number = STATE.get("division",10)
         if method in ("PUT", "POST"):
             STATE.set("offline_season_active", True)
-            STATE.set("offline_season_division", max(1, min(10, int(division_number))))
+            #STATE.set("offline_season_division", max(1, min(10, int(division_number))))
             if isinstance(payload, dict):
                 # This endpoint is FIFA saving its opaque SeasonData blob. The
                 # wire `round` is *not* proof that a match has been completed:
