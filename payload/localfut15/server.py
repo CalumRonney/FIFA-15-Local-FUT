@@ -53,6 +53,7 @@ LOGS = RUNTIME_ROOT / "logs"
 LEGACY_DB_PATH = DATA / "localfut15.sqlite3"
 DB_PATH = RUNTIME_ROOT / "fut15-local.sqlite3"
 CONFIG_PATH = ROOT / "config.json"
+DIVISIONS_PATH = ROOT / "divisions.json"
 
 DATA.mkdir(parents=True, exist_ok=True)
 LOGS.mkdir(parents=True, exist_ok=True)
@@ -116,6 +117,245 @@ def load_config() -> dict[str, Any]:
     return defaults
 
 CFG = load_config()
+
+
+def load_divisions() -> dict[str,dict[str,Any]]:
+    defaults = {
+      "1": {
+          "numMatches": 10,
+          "maintenancePoints": 6,
+          "promotionPoints": 9,
+          "titlePoints": 12,
+          "relegationCoins": 10000,
+          "maintenanceCoins": 20000,
+          "promotionCoins": 30000,
+          "titleCoins": 50000,
+          "teams": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10
+          ]
+    },
+    "2": {
+          "numMatches": 10,
+          "maintenancePoints": 6,
+          "promotionPoints": 9,
+          "titlePoints": 12,
+          "relegationCoins": 10000,
+          "maintenanceCoins": 20000,
+          "promotionCoins": 30000,
+          "titleCoins": 50000,
+          "teams": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10
+          ]
+  },
+    "3": {
+          "numMatches": 10,
+          "maintenancePoints": 6,
+          "promotionPoints": 9,
+          "titlePoints": 12,
+          "relegationCoins": 10000,
+          "maintenanceCoins": 20000,
+          "promotionCoins": 30000,
+          "titleCoins": 50000,
+          "teams": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10
+          ]
+  },
+  "4": {
+        "numMatches": 10,
+        "maintenancePoints": 6,
+        "promotionPoints": 9,
+        "titlePoints": 12,
+        "relegationCoins": 10000,
+        "maintenanceCoins": 20000,
+        "promotionCoins": 30000,
+        "titleCoins": 50000,
+        "teams": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ]
+  },
+  "5": {
+        "numMatches": 10,
+        "maintenancePoints": 6,
+        "promotionPoints": 9,
+        "titlePoints": 12,
+        "relegationCoins": 10000,
+        "maintenanceCoins": 20000,
+        "promotionCoins": 30000,
+        "titleCoins": 50000,
+        "teams": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ]
+  },
+  "6": {
+        "numMatches": 10,
+        "maintenancePoints": 6,
+        "promotionPoints": 9,
+        "titlePoints": 12,
+        "relegationCoins": 10000,
+        "maintenanceCoins": 20000,
+        "promotionCoins": 30000,
+        "titleCoins": 50000,
+        "teams": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ]
+  },
+  "7": {
+        "numMatches": 10,
+        "maintenancePoints": 6,
+        "promotionPoints": 9,
+        "titlePoints": 12,
+        "relegationCoins": 10000,
+        "maintenanceCoins": 20000,
+        "promotionCoins": 30000,
+        "titleCoins": 50000,
+        "teams": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ]
+  },
+  "8": {
+        "numMatches": 10,
+        "maintenancePoints": 6,
+        "promotionPoints": 9,
+        "titlePoints": 12,
+        "relegationCoins": 10000,
+        "maintenanceCoins": 20000,
+        "promotionCoins": 30000,
+        "titleCoins": 50000,
+        "teams": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ]
+  },
+  "9": {
+        "numMatches": 10,
+        "maintenancePoints": 6,
+        "promotionPoints": 9,
+        "titlePoints": 12,
+        "relegationCoins": 10000,
+        "maintenanceCoins": 20000,
+        "promotionCoins": 30000,
+        "titleCoins": 50000,
+        "teams": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ]
+  },
+  "10": {
+        "numMatches": 10,
+        "maintenancePoints": 6,
+        "promotionPoints": 9,
+        "titlePoints": 12,
+        "relegationCoins": 10000,
+        "maintenanceCoins": 20000,
+        "promotionCoins": 30000,
+        "titleCoins": 50000,
+        "teams": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ]
+
+  }
+  }
+    if DIVISIONS_PATH.exists():
+         try:
+            supplied = json.loads(DIVISIONS_PATH.read_text(encoding="utf-8"))
+            if isinstance(supplied, dict):
+                defaults.update(supplied)
+         except Exception:
+            pass
+
+        
+    return defaults
+            
+
+DIVISIONS = load_divisions()
 
 PACK_SETTINGS_PATH = ROOT / "pack_settings.json"
 
@@ -2497,12 +2737,7 @@ class State:
 
     def update_offline_season(self, payload: dict[str, Any]) -> dict[str, int]:
         state = self.offline_season_state()
-        seasonDef = _offline_season_definitions()
 
-        current = next(
-            (x for x in seasonDef if int(x.get("divisionNumber", 10)) == int(state.get("division", 10))),
-            seasonDef[-1],
-        )
         # Accept native-ish progress payloads without requiring a single schema.
         for src, key in (("round", "round"), ("points", "points"), ("wins", "wins"), ("draws", "draws"),
                          ("losses", "losses"), ("goalsFor", "goalsFor"), ("goalsAgainst", "goalsAgainst")):
@@ -2516,6 +2751,7 @@ class State:
             state["draws"] += 1; state["points"] += 1; state["round"] += 1
         elif result in ("loss", "lose", "l"):
             state["losses"] += 1; state["round"] += 1
+
         mapping = {
             "offline_season_division": state["division"], "offline_season_points": state["points"],
             "offline_season_round": state["round"], "offline_season_wins": state["wins"],
@@ -4051,7 +4287,7 @@ def _transfer_pile_payload() -> dict[str, Any]:
     }
 
 '''todo season rewards and definitions'''
-def _offline_season_definitions() -> list[dict[str, Any]]:
+def _offline_season_definitions(division: int) -> dict[str, Any]:
     """FIFA 15 offline division table using the client-proven FIFA 14 PC ordinal contract.
 
     The user's working FIFA 14 PC build established a three-way contract that is
@@ -4065,20 +4301,34 @@ def _offline_season_definitions() -> list[dict[str, Any]]:
     different fresh seasonId.  v0.2.16 removes those speculative differences and
     ports the working PC contract while retaining FIFA 15-specific routes/assets.
     """
+
+
     # division, matches, promotion threshold, championship coins
-    ladder = [
-        (1, 10, 23, 10000),
-        (2, 10, 21, 7500),
-        (3, 10, 19, 6000),
-        (4, 10, 18, 5000),
-        (5, 10, 16, 4400),
-        (6, 10, 16, 3800),
-        (7, 10, 14, 3300),
-        (8, 10, 13, 2900),
-        (9, 2, 11, 1000000),
-        (10, 1, 0, 50000),
-    ]
-    defs: list[dict[str, Any]] = []
+    divisionDef = DIVISIONS.get(str(division))
+
+
+
+    return {
+            "divisionNumber": division,
+            "id": division,
+            "seasonId": division,
+            "divisionId": division,
+            "name": f"Division {division}",
+            "difficulty": int(CFG.get("difficulty",1)),
+            "numMatches": int(divisionDef.get("numMatches")),
+            "pointsForTitle": int(divisionDef.get("titlePoints")),
+            "pointsForPromotion": int(divisionDef.get("promotionPoints")),
+            "pointsForRelegation": int(divisionDef.get("maintenancePoints")),
+            "relegationCoins": int(divisionDef.get("relegationCoins")),
+            "maintenanceCoins": int(divisionDef.get("maintenanceCoins")),
+            "promotionCoins":  int(divisionDef.get("promotionCoins")),
+            "titleCoins": int(divisionDef.get("titleCoins")),
+            "teams": divisionDef.get("teams"),
+        
+    }
+
+'''
+    defs: dict[str, Any] = []
     for division, matches, promote_pts, championship_coins in ladder:
         difficulty = CFG.get("difficulty",1)
         title_pts = promote_pts + 3
@@ -4097,6 +4347,7 @@ def _offline_season_definitions() -> list[dict[str, Any]]:
             "reward": championship_coins,
         })
     return defs
+'''
 
 
 SEASON_TROPHY_RESOURCE_ID = 1100
@@ -4152,11 +4403,11 @@ def _season_trophy_item_response(resource_id: int) -> dict[str, Any]:
 '''todo season team def'''
 def _season_match_records(internal: dict[str, Any]) -> list[dict[str, Any]]:
     """Ten local AI fixtures using member names present in FIFA 15 CardsDLL."""
-    division = int(internal["divisionNumber"])
-    difficulty = int(internal["difficulty"])
+    division = int(internal.get("divisionNumber"))
+    difficulty = int(internal.get("difficulty"))
     # Known FIFA 15 club IDs; deliberately varied so the fixture list is not a
     # single repeated opponent. Division 10 starts at low difficulty.
-    teams = [1, 5, 7, 9, 10, 11, 21, 22, 73, 243]
+    teams = internal.get("teams")
     return [
         {
             "teamId": int(teams[i % len(teams)]),
@@ -4165,7 +4416,7 @@ def _season_match_records(internal: dict[str, Any]) -> list[dict[str, Any]]:
             "roundId": i,
             "coins": 300 + i * 25 + (10 - division) * 50,
         }
-        for i in range(int(internal["numMatches"]))
+        for i in range(int(internal.get("numMatches")))
     ]
 
 
@@ -4188,24 +4439,24 @@ def _season_prize(level: str, threshold: int, coins: int = 0) -> dict[str, Any]:
 '''todo further season coins setup'''
 def _season_list_wire_record(internal: dict[str, Any]) -> dict[str, Any]:
     """Exact FIFA 15 PC SeasonList record, limited to members its parser reads."""
-    title = int(internal["pointsForTitle"])
-    promotion = int(internal["pointsForPromotion"])
-    maintenance = int(internal["pointsForRelegation"])
-    division = int(internal["divisionNumber"])
+    title = int(internal.get("pointsForTitle"))
+    promotion = int(internal.get("pointsForPromotion"))
+    maintenance = int(internal.get("pointsForRelegation"))
+    division = int(internal.get("divisionNumber"))
     # Small but non-zero Division 10 rewards so the native Season Rewards
     # binding has actual award records to consume.
-    championship_coins = int(internal.get("reward", 1900) or 1900)
-    promotion_coins = championship_coins * 0.8
-    maintenance_coins = championship_coins * 0.6
-    relegation_coins = championship_coins * 0.2
+    championship_coins = int(internal.get("titleCoins"))
+    promotion_coins = int(internal.get("promotionCoins"))
+    maintenance_coins = int(internal.get("maintenanceCoins"))
+    relegation_coins = int(internal.get("relegationCoins"))
     return {
-        "id": int(internal["id"]),
+        "id": int(internal.get("id")),
         # Keep the catalogue identity stable. Reversing these ten values in
         # v0.2.23 made the FIFA 15 PC client crash immediately after parsing
         # SeasonList. The known-working PC contract is id N / divisionId N.
-        "divisionId": int(internal["divisionId"]),
+        "divisionId": int(internal.get("divisionId")),
         "type": "OFFLINE",
-        "numMatches": 10,
+        "numMatches": internal.get("numMatches",10),
         "matchLengthMin": 6,
         "matches": _season_match_records(internal),
         "prizeSet": [
@@ -4236,8 +4487,9 @@ def _offline_season_user_payload(full: bool = False) -> dict[str, Any]:
     """
     st = STATE.offline_season_state()
     division_number = max(1, min(10, int(st.get("division", 10) or 10)))
-    all_defs = _offline_season_definitions()
-    internal = next((x for x in all_defs if int(x["divisionNumber"]) == division_number), all_defs[-1])
+    internal = _offline_season_definitions(division_number)
+
+    #internal = next((x for x in all_defs if int(x["divisionNumber"]) == division_number), all_defs[-1])
     active = bool(STATE.get("offline_season_active", False))
     # Fresh bootstrap and resumed-season parsing are annoyingly different in
     # FIFA 15 PC. The exact v0.2.13 fresh contract that first opened Seasons
@@ -4274,7 +4526,7 @@ def _offline_season_user_payload(full: bool = False) -> dict[str, Any]:
         "divisionId": wire_division,
         "offlineDivision": int(division_number),
         "type": "offline",
-        "round": max(1, min(10, int(st.get("round", 0) or 0) + 1)),
+        "round": max(1, min(10,int(st.get("round", 0) or 0) + 1)),
         # v0.2.21 accidentally dropped these v0.2.20 underway-state members.
         # Without them GetCurrentSeasonID falls back to StartSeason even when
         # the SQLite state and opaque save are already on Round 2+.
@@ -4326,8 +4578,8 @@ def _season_progress_wire_payload(season_id: int | None = None, division_number:
     if division_number is None:
         division_number = int(STATE.offline_season_state().get("division", 10) or 10)
     division_number = max(1, min(10, int(division_number)))
-    all_defs = _offline_season_definitions()
-    internal = next((x for x in all_defs if int(x["divisionNumber"]) == division_number), all_defs[-1])
+    internal = _offline_season_definitions(division_number)
+    #internal = next((x for x in all_defs if int(x["divisionNumber"]) == division_number), all_defs[-1])
     sid = int(season_id if season_id is not None else internal["seasonId"])
     document: dict[str, Any] = {}
     saved_data = str(STATE.get("offline_season_wire_data", "") or "")
@@ -4769,11 +5021,13 @@ def route_fut(method: str, raw_path: str, headers: dict[str, str], body: bytes) 
                 return 200, {"Cache-Control": "no-store"}, json_bytes(cached)
 
         st_before = STATE.offline_season_state()
-        internal_defs = _offline_season_definitions()
+        current = _offline_season_definitions(st_before.get("division", 10))
+        '''
         current = next(
             (x for x in internal_defs if int(x.get("divisionNumber", 10)) == int(st_before.get("division", 10))),
             internal_defs[-1],
         )
+         '''
         difficulty = int(current.get("difficulty", 1) or 1)
 
         raw_items = doc.get("items") if isinstance(doc.get("items"), list) else []
@@ -4856,13 +5110,13 @@ def route_fut(method: str, raw_path: str, headers: dict[str, str], body: bytes) 
 
             if seasonComplete:
                 if settled.get("Points", 0) >= current.get("pointsForTitle", 23):
-                    season_coins = current.get("reward")
+                    season_coins = current.get("titleCoins")
                 elif settled.get("Points", 0) >= current.get("pointsForPromotion", 23):
-                    season_coins = current.get("reward") * 0.8
+                    season_coins = current.get("promotionCoins")
                 elif settled.get("Points", 0) >= current.get("pointsForMaintenance", 23):
-                    season_coins = current.get("reward") * 0.6
+                    season_coins = current.get("maintenanceCoins")
                 else:
-                    season_coins = current.get("reward") * 0.2
+                    season_coins = current.get("relegationCoins")
                 log.info("Season finish, added credits %s",season_coins)
                 STATE.add_credits(season_coins)
                 STATE.set("offline_season_coins", int(STATE.get("offline_season_coins", 0) or 0) + season_coins)
@@ -5830,7 +6084,7 @@ def route_fut(method: str, raw_path: str, headers: dict[str, str], body: bytes) 
     if bool(CFG.get("offline_seasons_enabled", True)) and low == "/ut/game/fifa15/season/list":
         season_type = str(query.get("type", ["offline"])[0] or "offline").lower()
         if season_type == "offline":
-            all_defs = _offline_season_definitions()
+
             raw_divisions = str(query.get("divisionList", query.get("divisionlist", [""]))[0] or "")
             wanted: list[int] = []
             for token in re.findall(r"\d+", raw_divisions):
@@ -5843,8 +6097,14 @@ def route_fut(method: str, raw_path: str, headers: dict[str, str], body: bytes) 
             # The working FIFA 14 PC client requires the complete ordered
             # Division 1..10 catalogue even when the request contains
             # divisionList=10. Keep the request value only as a diagnostic.
-            selected = all_defs
-            defs = [_season_list_wire_record(x) for x in selected]
+            defs = []
+            for x in range(1,11):
+                selected = _offline_season_definitions(x)
+
+
+                defs.append(_season_list_wire_record(selected))
+                
+            
             response = {"seasons": defs}
             log.warning("SEASONS PC-COMPAT LIST requested=%s count=%s ids=%s divisionIds=%s", wanted, len(defs), [x.get("id") for x in defs], [x.get("divisionId") for x in defs])
             return 200, {"Cache-Control": "no-store"}, json_bytes(response)

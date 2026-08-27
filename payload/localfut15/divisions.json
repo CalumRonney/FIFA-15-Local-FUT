@@ -1,0 +1,222 @@
+{
+  "1": {
+    "numMatches": 10,
+    "maintenancePoints": 6,
+    "promotionPoints": 9,
+    "titlePoints": 12,
+    "relegationCoins": 10000,
+    "maintenanceCoins": 20000,
+    "promotionCoins": 30000,
+    "titleCoins": 50000,
+    "teams": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  "2": {
+    "numMatches": 10,
+    "maintenancePoints": 6,
+    "promotionPoints": 9,
+    "titlePoints": 12,
+    "relegationCoins": 10000,
+    "maintenanceCoins": 20000,
+    "promotionCoins": 30000,
+    "titleCoins": 50000,
+    "teams": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  "3": {
+    "numMatches": 10,
+    "maintenancePoints": 6,
+    "promotionPoints": 9,
+    "titlePoints": 12,
+    "relegationCoins": 10000,
+    "maintenanceCoins": 20000,
+    "promotionCoins": 30000,
+    "titleCoins": 50000,
+    "teams": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  "4": {
+    "numMatches": 10,
+    "maintenancePoints": 6,
+    "promotionPoints": 9,
+    "titlePoints": 12,
+    "relegationCoins": 10000,
+    "maintenanceCoins": 20000,
+    "promotionCoins": 30000,
+    "titleCoins": 50000,
+    "teams": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  "5": {
+    "numMatches": 10,
+    "maintenancePoints": 6,
+    "promotionPoints": 9,
+    "titlePoints": 12,
+    "relegationCoins": 10000,
+    "maintenanceCoins": 20000,
+    "promotionCoins": 30000,
+    "titleCoins": 50000,
+    "teams": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  "6": {
+    "numMatches": 10,
+    "maintenancePoints": 6,
+    "promotionPoints": 9,
+    "titlePoints": 12,
+    "relegationCoins": 10000,
+    "maintenanceCoins": 20000,
+    "promotionCoins": 30000,
+    "titleCoins": 50000,
+    "teams": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  "7": {
+    "numMatches": 10,
+    "maintenancePoints": 6,
+    "promotionPoints": 9,
+    "titlePoints": 12,
+    "relegationCoins": 10000,
+    "maintenanceCoins": 20000,
+    "promotionCoins": 30000,
+    "titleCoins": 50000,
+    "teams": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  "8": {
+    "numMatches": 10,
+    "maintenancePoints": 6,
+    "promotionPoints": 9,
+    "titlePoints": 12,
+    "relegationCoins": 10000,
+    "maintenanceCoins": 20000,
+    "promotionCoins": 30000,
+    "titleCoins": 50000,
+    "teams": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  "9": {
+    "numMatches": 10,
+    "maintenancePoints": 6,
+    "promotionPoints": 9,
+    "titlePoints": 12,
+    "relegationCoins": 10000,
+    "maintenanceCoins": 20000,
+    "promotionCoins": 30000,
+    "titleCoins": 50000,
+    "teams": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  "10": {
+    "numMatches": 10,
+    "maintenancePoints": 0,
+    "promotionPoints": 12,
+    "titlePoints": 15,
+    "relegationCoins": 10000,
+    "maintenanceCoins": 20000,
+    "promotionCoins": 30000,
+    "titleCoins": 100000,
+    "teams": [
+      1,
+      25,
+      3,
+      4,
+      5,
+      13,
+      7,
+      50,
+      9,
+      246
+    ]
+  }
+}
