@@ -78,7 +78,55 @@ def load_config() -> dict[str, Any]:
         "fut_port": 8199,
         "legacy_fut_port": 8099,
         "lsx_port": 3216,
-        "starter_players": [20801, 158023, 190871, 176580, 173731, 188545, 153079, 183277, 167495, 155862, 164240, 177003, 182521, 195864],
+        "starter_players": {
+            "ST":[
+            220168,
+            217146,
+            219645,
+            221388,
+            223224
+            ],
+            "LM":[
+            217786,
+            211253,
+            224777
+            ],
+            "CM":[
+            216105, 
+            222454, 
+            221957, 
+            205145, 
+            222421, 
+            221705
+            ],
+            "RM":[
+            222463, 
+            223221, 
+            211164
+            ],           
+            "LB":[
+            201242, 
+            210960, 
+            222319
+            ],  
+            "CB":[
+            222840, 
+            221220, 
+            225487, 
+            212287, 
+            221491
+            ],  
+            "RB":[
+            210581, 
+            213127, 
+            220116
+            ],  
+            "GK":[
+            222095, 
+            225181, 
+            215502
+            ]
+        },
         "pack_size": 12,
         "pack_cost": 7500,
         "special_pack_chance": 0.10,
@@ -1074,7 +1122,7 @@ class State:
             return v
 
     'Todo: quick sell value'
-    def player_discard_value(self, resource_id: int) -> int64:
+    def player_discard_value(self, resource_id: int) -> int:
 
         """Updated quick-sell values, aims to widen gap between different rated players
             quick-sell value is primarly based on rating
@@ -1426,9 +1474,73 @@ class State:
                 self.conn.commit()
                 log.info("Enriched %d existing FUT player items with FIFA 15 metadata", changed)
 
+    #Define starter team
+    #Picks players randomly from a selection defined in config.json for each position
+    #Each position gets a certain amount of players to fill out a full 4-4-2 squad subs and reserves
+    #Duplicate protection also implemented
     def _seed_items(self) -> None:
-        for rid in list(CFG.get("starter_players", []))[:14]:
-            self.make_player_item(int(rid), "club")
+
+        starterPlayers = CFG.get("starter_players", [])
+        #log.info(starterPlayers)
+        pickedPlayers = []
+        #ST
+        for x in range(4):
+            playerPool = starterPlayers.get("ST")
+            pickedPlayers = self._make_starter_player(playerPool,pickedPlayers)
+
+        #LM
+        for x in range(2):
+            playerPool = starterPlayers.get("LM")
+            pickedPlayers = self._make_starter_player(playerPool,pickedPlayers)
+
+        #CM
+        for x in range(5):
+            playerPool = starterPlayers.get("CM")
+            pickedPlayers = self._make_starter_player(playerPool,pickedPlayers)
+
+        #RM
+        for x in range(2):
+            playerPool = starterPlayers.get("RM")
+            pickedPlayers = self._make_starter_player(playerPool,pickedPlayers)
+
+        #LB
+        for x in range(2):
+            playerPool = starterPlayers.get("LB")
+            pickedPlayers = self._make_starter_player(playerPool,pickedPlayers)
+
+        #CB
+        for x in range(4):
+            playerPool = starterPlayers.get("CB")
+            pickedPlayers = self._make_starter_player(playerPool,pickedPlayers)
+        #RB
+        for x in range(2):
+            playerPool = starterPlayers.get("RB")
+            pickedPlayers = self._make_starter_player(playerPool,pickedPlayers)
+
+        #GK
+        for x in range(2):
+            playerPool = starterPlayers.get("GK")
+            pickedPlayers = self._make_starter_player(playerPool,pickedPlayers)
+
+        log.info(pickedPlayers)
+
+        #for rid in list(CFG.get("starter_players", []))[:14]:
+           # self.make_player_item(int(rid), "club")
+    
+    #helper function for starter team to randomly select and create a player and add to item pile based on given list of players and already picked players
+    def _make_starter_player(self, playersPool: list[int], pickedPlayers: list[int]) -> list[int]:
+        playerSelected = False
+        while playerSelected is False:
+            playerIndex = random.randint(0, len(playersPool) - 1)
+
+            if playersPool[playerIndex] not in pickedPlayers:
+                pickedPlayers.append(playersPool[playerIndex])
+                log.info(playersPool[playerIndex])
+                self.make_player_item(playersPool[playerIndex], "club")
+                playerSelected = True
+
+        return pickedPlayers
+
 
     def list_items(self, pile: str | None = None) -> list[dict[str, Any]]:
         with self.lock:
@@ -2041,7 +2153,7 @@ class State:
         return {"consumedItemId": consumed_id, "effect": effect, "itemData": changed}
 
     def _seed_squad(self) -> None:
-        players = self.list_items("club")[:11]
+        players = self.list_items("club")[:23]
         lineup = []
         for idx, item in enumerate(players):
             lineup.append({"index": idx, "itemId": item["id"], "loyaltyBonus": 1})
